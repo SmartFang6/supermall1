@@ -6,39 +6,88 @@
     <home-swiper :banners="banners"></home-swiper>
     <recommends-view :recommend="recommend"></recommends-view>
     <featuer-view></featuer-view>
+    <tables class="tables" :titles="['流行','新款','精选']" @tabClick="tabClick"></tables>
+    <goods-list :goods ="showGoods"></goods-list>
   </div>
 </template>
 
 <script>
-import NavBar from 'common/navBar/NavBar' 
-import {getHomeData} from 'network/home'
 import HomeSwiper from './childCom/HomeSwiper'
 import RecommendsView from './childCom/RecommendsView'
 import FeatuerView from './childCom/FeatuerView'
 
+import Tables from 'content/table/Table'
+import NavBar from 'common/navBar/NavBar'
+import GoodsList from 'content/goods/GoodsList' 
+
+
+import {getHomeData,getHomeGoods} from 'network/home'
 export default {
   components:{
-    NavBar,
     HomeSwiper,
     RecommendsView,
-    FeatuerView
+    FeatuerView,
+    NavBar,
+    Tables,
+    GoodsList
   },
   props:{},
   data(){
     return {
       banners:[],
-      recommend:[]
+      recommend:[],
+      goods:{
+        'pop':{page:0,list:[]},
+        'new':{page:0,list:[]},
+        'sell':{page:0,list:[]}
+      },
+      currentType:'pop'
     }
   },
   created(){
-    getHomeData().then(res=>{
-      console.log(res)
-      this.banners = res.data.data.banner.list;  //把请求的网络数据保存下来
-      this.recommend = res.data.data.recommend.list;
-    })
+    //文件创建好的时候请求数据
+    this.getHomeData()
+    //请求商品goods的数据
+    this.getHomeGoods('pop') 
+    this.getHomeGoods('new') 
+    this.getHomeGoods('sell') 
   },
-  computed:{},
-  methods:{},
+  computed:{
+    showGoods(){
+      return this.goods[this.currentType].list
+    }
+  },
+  methods:{
+    //网络请求
+    getHomeData(){
+      getHomeData().then(res=>{
+        this.banners = res.data.data.banner.list;  //把请求的网络数据保存下来
+        this.recommend = res.data.data.recommend.list;
+      })
+    },
+    getHomeGoods(type){
+      const page = this.goods[type].page + 1;
+      getHomeGoods(type,page).then(res=>{
+        // console.log(res.data.data.list)
+        this.goods[type].list.push(...res.data.data.list)
+        this.goods[type].page += 1
+      })
+    },
+    //父组件向子组件传递
+    tabClick(index){
+      switch(index){
+        case 0:
+          this.currentType = "pop"
+          break
+        case 1:
+          this.currentType = "new"
+          break
+        case 2:
+          this.currentType = "sell"
+          break
+      }
+    }
+  },
 }
 </script>
 <style scoped>
@@ -57,5 +106,9 @@ export default {
   }
  .center{
    color: #fff;
+ }
+ .tables{
+   position: sticky;
+   top: 44px;
  }
 </style>
