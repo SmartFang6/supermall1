@@ -26,7 +26,7 @@ export default {
       currentIndex: 0
     };
   },
-  computed() {},
+  computed: {},
   createds: {},
   methods: {
     itemClick(index) {
