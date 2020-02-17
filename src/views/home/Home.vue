@@ -3,16 +3,17 @@
     <nav-bar class="homenav">
       <div class="center" slot="center">购物街</div>
     </nav-bar>
+    <tables ref="tabControl1" class="tab-control" :titles="['流行','新款','精选']" @tabClick="tabClick" v-show="istabfixed"></tables>
     <scroll class="content" 
             ref="scroll" 
             :probe-type="3" 
             :pull-up-load="true" 
             @scroll="contentScroll"
             @pullingUp="loadMore"> <!-- $emit的名字可以使用驼峰 -->
-      <home-swiper :banners="banners"></home-swiper>
+      <home-swiper :banners="banners" @swiperLoad="swiperLoad"></home-swiper>
       <recommends-view :recommend="recommend"></recommends-view>
       <featuer-view></featuer-view>
-      <tables class="tables" :titles="['流行','新款','精选']" @tabClick="tabClick"></tables>
+      <tables ref="tabControl2" :titles="['流行','新款','精选']" @tabClick="tabClick"></tables>
       <goods-list :goods="showGoods"></goods-list>
     </scroll>
      <back-top class="back-top" @click.native="backTop" v-show="isShowBt"></back-top>
@@ -28,9 +29,11 @@ import Tables from "content/table/Table";
 import NavBar from "common/navBar/NavBar";
 import GoodsList from "content/goods/GoodsList";
 import Scroll from "common/scroll/Scroll";
-import BackTop from 'content/backTop/BackTop';
+
 
 import { getHomeData, getHomeGoods } from "network/home";
+import {debounce} from '@/common/tools'
+import {ImageLoad,backTops} from '@/common/mixin'
 export default {
   components: {
     HomeSwiper,
@@ -39,8 +42,7 @@ export default {
     NavBar,
     Tables,
     GoodsList,
-    Scroll,
-    BackTop
+    Scroll
   },
   props: {},
   data() {
@@ -53,7 +55,9 @@ export default {
         sell: { page: 0, list: [] }
       },
       currentType: "pop",
-      isShowBt:false
+      tabOffset:0,
+      istabfixed:false,
+      saveY:0 ,//保存离开时页面的位置
     };
   },
   created() {
@@ -64,16 +68,32 @@ export default {
     this.getHomeGoods("new");
     this.getHomeGoods("sell");
   },
+  mixins:[ImageLoad,backTops],
   mounted(){
-    //监听图片加载完成
-    this.$bus.$on('itemImgLoad',()=>{
-      this.$refs.scroll.scroll.refresh()
-    })
+    //监听图片加载完成，判断goods里面的图片是否加载完毕，
+    // const refresh = debounce(this.$refs.scroll.refresh,500)
+    // this.imgLoad=()=>{
+    //   refresh()
+    // }
+    // this.$bus.$on('itemImgLoad',this.imgLoad)
+    console.log(1)
   },
   computed: {
-    showGoods() {
+    showGoods() { //判断显示goods中哪一页的数据
       return this.goods[this.currentType].list;
     }
+  },
+  activated(){
+    this.$refs.scroll.scrollTo(0,this.saveY,50)
+    this.$refs.scroll.refresh()
+    console.log(this.saveY)
+  },
+  deactivated(){
+    //离开时，保存scroll的Y值
+    this.saveY = this.$refs.scroll.scroll.y
+    console.log(this.saveY)
+    // 取消对itemImgLoad的使用
+    this.$bus.$off('itemImgLoad',this.itemimgLoad1)
   },
   methods: {
     //网络请求
@@ -83,7 +103,7 @@ export default {
         this.recommend = res.data.data.recommend.list;
       });
     },
-    getHomeGoods(type) {
+    getHomeGoods(type) { //发送网络请求，并把数据保存到goods变量中
       const page = this.goods[type].page + 1;
       getHomeGoods(type, page).then(res => {
         // console.log(res.data.data.list)
@@ -105,41 +125,50 @@ export default {
           this.currentType = "sell";
           break;
       }
+      this.$refs.tabControl1.currentIndex = index; //让2各tabcontrol保持一致
+      this.$refs.tabControl2.currentIndex = index;
     },
     //组件的方法
-    backTop(){
-      this.$refs.scroll.scrollTo(0,0,500)
+    // backTop(){ //调用scroll里面的回到顶部
+    //   this.$refs.scroll.scrollTo(0,0,500)
+    // },
+    contentScroll(position){ 
+      this.isShowBt = (-position.y) > 800//判断滚动的y轴位置是否大于800
+      //使tabcontrol吸顶
+      this.istabfixed = (-position.y)>this.tabOffset
     },
-    contentScroll(position){
-      this.isShowBt = (-position.y) > 800
+    loadMore(){ //加载更多的goods商品
+      this.getHomeGoods(this.currentType) //调用上面的getHomeGoods，来判断加载哪一个
+      // console.log('加载')
     },
-    loadMore(){
-      this.getHomeGoods(this.currentType)
-      console.log('加载')
-    }
+   swiperLoad(){ //判断轮播组件是否加载完毕
+    this.tabOffset = this.$refs.tabControl2.$el.offsetTop
+    //  console.log(this.tabOffset)
+   }
   }
 };
 </script>
 <style scoped>
 #home {
   height: 100vh;
+  background-color: #fff;
   /* position: relative; */
 }
 .homenav {
   background-color: #ff8198;
   font-weight: bold;
-  position: fixed;
-  left: 0;
-  top: 0;
-  right: 0;
-  z-index: 9;
 }
 .center {
   color: #fff;
 }
-.tables {
+/* .tables { //吸顶效果，但是由于堆叠上下文的原因在本例子中无法使用
   position: sticky;
   top: 44px;
+} */
+.tab-control{
+  position: relative;
+  z-index: 9;
+  margin-top: -1px;
 }
 .back-top{
   position: fixed;

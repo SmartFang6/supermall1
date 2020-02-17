@@ -4,7 +4,8 @@
       v-for="(item,index) in titles"
       class="table-item"
       :class="{active: index === currentIndex}"
-      @click="itemClick(index)">
+      @click="itemClick(index)"
+      :key='item'>
       <span>{{item}}</span>
     </div>
   </div>

@@ -1,8 +1,8 @@
 <template>
-  <swiper>
-    <swiper-item v-for="item in banners">
+  <swiper ref="swiper" v-if="banners.length">
+    <swiper-item v-for="item in banners" :key="item.id">
       <a :href="item.link">
-        <img :src="item.image" alt />
+        <img :src="item.image" alt @load="imgLoad" />
       </a>
     </swiper-item>
   </swiper>
@@ -24,7 +24,17 @@ export default {
     }
   },
   data() {
-    return {};
+    return {
+      isLoad:false//记录加载状态
+    }
+  },
+  methods:{
+    imgLoad(){
+      if(!this.isLoad){
+        this.$emit('swiperLoad')
+        this.isLoad = true
+      }
+    }
   }
 };
 </script>
